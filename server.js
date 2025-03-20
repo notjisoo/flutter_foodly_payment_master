@@ -19,27 +19,79 @@ app.get("/api/test", (req, res) => {
 });
 
 // 创建支付意图的 API
-app.post("/api/payment-intent", async (req, res) => {
-  console.log("payment-intent");
+app.post("/api/process-payment", async (req, res) => {
   try {
-    const { amount = 500, currency = "usd" } = req.body;
+    // 接收来自前端的支付数据
+    const { amount = 500, currency = "usd", paymentMethodId } = req.body;
 
-    if (!amount || !currency) {
-      return res
-        .status(400)
-        .json({ error: "Amount and currency are required." });
+    if (!amount || !currency || !paymentMethodId) {
+      return res.status(400).json({ error: "Invalid parameters." });
     }
 
+    // 创建支付意图
     const paymentIntent = await stripeInstance.paymentIntents.create({
       amount,
       currency,
-      payment_method_types: ["card"],
+      payment_method: paymentMethodId, // 前端传递的 payment_method_id
+      confirm: true, // 直接确认支付（无需前端再次调用）
     });
 
-    res.status(200).json({ clientSecret: paymentIntent.client_secret });
+    // 返回支付结果
+    res.status(200).json({ status: paymentIntent.status });
   } catch (error) {
-    console.error("Error creating payment intent:", error);
-    res.status(500).json({ error: "Internal Server Error" });
+    console.error("Error processing payment:", error);
+    res
+      .status(500)
+      .json({ error: "Payment processing failed", details: error.message });
+  }
+});
+
+app.post("/create-checkout-session", async (req, res) => {
+  // 创建客户
+  const customer = await stripe.customers.create({
+    metadata: {
+      userId: req.body.userId,
+      cart: JSON.stringify(req.body.cartItems),
+    },
+  });
+
+  // 创建支付条目
+  const line_items = req.body.cartItems.map((item) => {
+    return {
+      price_data: {
+        currency: "usd",
+        product_data: {
+          name: item.name,
+          description: "This is a test product",
+          metadata: {
+            id: item.id,
+            restaurantId: item.restaurantId,
+          },
+        },
+        unit_amount: item.price * 100,
+      },
+      quantity: item.quantity,
+    };
+  });
+
+  try {
+    // 创建支付会话
+    const session = await stripe.checkout.sessions.create({
+      customer: customer.id,
+      line_items,
+      mode: "payment",
+      success_url: `${process.env.FRONTEND_URL}/success`,
+      cancel_url: `${process.env.FRONTEND_URL}/cancel`,
+    });
+
+    // 返回session URL给客户端
+    res.send({ url: session.url });
+  } catch (error) {
+    // 错误处理
+    console.error("Error creating checkout session:", error);
+    res.status(500).json({
+      error: "创建支付会话时发生错误",
+    });
   }
 });
 

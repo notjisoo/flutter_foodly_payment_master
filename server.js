@@ -89,7 +89,7 @@ app.post("/api/create-checkout-session", async (req, res) => {
     // 错误处理
     console.error("Error creating checkout session:", error);
     res.status(500).json({
-      error: "创建支付会话时发生错误",
+      error: "创建支付会话时发生错误," + error.message,
     });
   }
 });

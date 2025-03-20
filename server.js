@@ -95,7 +95,7 @@ app.post("/api/create-checkout-session", async (req, res) => {
 });
 
 app.get("/api/test", (req, res) => {
-  res.send("Hello World");
+  res.send("Hello World heewipamda");
 });
 
 // 设置 Webhook 监听端点

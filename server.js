@@ -46,7 +46,7 @@ app.post("/api/process-payment", async (req, res) => {
   }
 });
 
-app.post("/create-checkout-session", async (req, res) => {
+app.post("/api/create-checkout-session", async (req, res) => {
   // 创建客户
   const customer = await stripe.customers.create({
     metadata: {

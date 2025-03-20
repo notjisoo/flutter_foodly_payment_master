@@ -1,12 +1,15 @@
 const express = require("express");
 const bodyParser = require("body-parser");
-const stripe = require("stripe");
+const Stripe = require("stripe");
+
+// 初始化 Stripe
+const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
+
 const dotenv = require("dotenv");
 
 // 加载环境变量
 dotenv.config();
 const app = express();
-const stripeInstance = stripe(process.env.STRIPE_SECRET_KEY);
 
 // 使用 body-parser 中间件
 app.use(bodyParser.json());
@@ -115,6 +118,9 @@ app.post("/api/create-checkout-session", async (req, res) => {
   }
 });
 
+app.get("/api/test", (req, res) => {
+  res.send("Hello World");
+});
 // 设置 Webhook 监听端点
 app.post("/api/webhook", (req, res) => {
   const sig = req.headers["stripe-signature"];

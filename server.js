@@ -43,19 +43,31 @@ app.post("/api/process-payment", async (req, res) => {
 
 app.post("/api/create-checkout-session", async (req, res) => {
   // 创建客户
-  if (!req.body.cartItems || !Array.isArray(req.body.cartItems)) {
-    return res.status(400).json({ error: "Invalid cartItems format" });
+  if (
+    !req.body.cartItems ||
+    !Array.isArray(req.body.cartItems) ||
+    req.body.cartItems.length === 0
+  ) {
+    return res.status(400).json({ error: "Invalid or empty cartItems" });
   }
 
-  const customer = await stripe.customers.create({
-    metadata: {
-      userId: req.body.userId,
-      cart: JSON.stringify(req.body.cartItems),
-    },
-  });
+  const customer = await stripe.customers
+    .create({
+      metadata: {
+        userId: req.body.userId,
+        cart: JSON.stringify(req.body.cartItems),
+      },
+    })
+    .catch((error) => {
+      console.error("Error creating customer:", error);
+      throw new Error("Failed to create customer");
+    });
 
   // 创建支付条目
   const line_items = req.body.cartItems.map((item) => {
+    if (typeof item.price !== "number" || item.price <= 0) {
+      throw new Error(`Invalid price for item: ${item.name}`);
+    }
     return {
       price_data: {
         currency: "usd",
@@ -74,6 +86,10 @@ app.post("/api/create-checkout-session", async (req, res) => {
   });
 
   try {
+    if (!process.env.FRONTEND_URL) {
+      throw new Error("FRONTEND_URL environment variable is missing");
+    }
+
     // 创建支付会话
     const session = await stripe.checkout.sessions.create({
       customer: customer.id,
@@ -87,15 +103,16 @@ app.post("/api/create-checkout-session", async (req, res) => {
     res.send({ url: session.url });
   } catch (error) {
     // 错误处理
-    console.error("Error creating checkout session:", error);
-    res.status(500).json({
-      error: "创建支付会话时发生错误," + error.message,
-    });
+    if (error instanceof Stripe.errors.StripeError) {
+      // Stripe 相关的错误
+      res.status(400).json({ error: "Stripe error: " + error.message });
+    } else {
+      // 其他服务器错误
+      res
+        .status(500)
+        .json({ error: "Internal server error: " + error.message });
+    }
   }
-});
-
-app.get("/api/test", (req, res) => {
-  res.send("Hello World");
 });
 
 // 设置 Webhook 监听端点

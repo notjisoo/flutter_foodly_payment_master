@@ -94,10 +94,6 @@ app.post("/api/create-checkout-session", async (req, res) => {
   }
 });
 
-app.get("/api/test", (req, res) => {
-  res.send("Hello World heewipamda");
-});
-
 // 设置 Webhook 监听端点
 app.post("/api/webhook", (req, res) => {
   const sig = req.headers["stripe-signature"];

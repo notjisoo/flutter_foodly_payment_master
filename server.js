@@ -80,8 +80,32 @@ app.post("/webhook", (req, res) => {
 
 
 // 测试案例
+// 测试案例：返回页面内容
 app.get("/test", (req, res) => {
-  res.send("This is vericl Hello World");
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Test Page</title>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+          }
+          h1 {
+            color: #4CAF50;
+          }
+        </style>
+      </head>
+      <body>
+        <h1>This is Vercel Hello World!</h1>
+        <p>API is working successfully on Vercel!</p>
+      </body>
+    </html>
+  `);
 });
 
 

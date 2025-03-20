@@ -10,13 +10,8 @@ const stripeInstance = stripe(process.env.STRIPE_SECRET_KEY);
 
 // 使用 body-parser 中间件
 app.use(bodyParser.json());
+app.use(express.json()); // 确保 Vercel 能正确解析 JSON
 app.use(bodyParser.raw({ type: "application/json" })); // 用于接收 Webhook 请求
-
-// ✅ 添加 test 路由
-app.get("/api/test", (req, res) => {
-  console.log("test");
-  res.json({ message: "Hello from Express on Vercel!" });
-});
 
 // 创建支付意图的 API
 app.post("/api/process-payment", async (req, res) => {
@@ -48,6 +43,10 @@ app.post("/api/process-payment", async (req, res) => {
 
 app.post("/api/create-checkout-session", async (req, res) => {
   // 创建客户
+  if (!req.body.cartItems || !Array.isArray(req.body.cartItems)) {
+    return res.status(400).json({ error: "Invalid cartItems format" });
+  }
+
   const customer = await stripe.customers.create({
     metadata: {
       userId: req.body.userId,

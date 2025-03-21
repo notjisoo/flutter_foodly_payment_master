@@ -30,7 +30,9 @@ app.post("/api/process-payment", async (req, res) => {
     const paymentIntent = await stripe.paymentIntents.create({
       amount,
       currency,
-      payment_method: paymentMethodId, // 前端传递的 payment_method_id
+      payment_method: paymentMethodId, // 前端传递的
+      cardholder: "ich_1MsKAB2eZvKYlo2C3eZ2BdvK",
+      type: "virtual",
       // confirm: true, // 直接确认支付（无需前端再次调用）
     });
 

@@ -27,15 +27,15 @@ app.post("/api/process-payment", async (req, res) => {
     }
 
     // 创建支付意图
-    const paymentIntent = await stripeInstance.paymentIntents.create({
+    const paymentIntent = await stripe.paymentIntents.create({
       amount,
       currency,
       payment_method: paymentMethodId, // 前端传递的 payment_method_id
-      confirm: true, // 直接确认支付（无需前端再次调用）
+      // confirm: true, // 直接确认支付（无需前端再次调用）
     });
 
-    // 返回支付结果
-    res.status(200).json({ status: paymentIntent.status });
+    // 返回 client_secret
+    res.status(200).json({ clientSecret: paymentIntent.client_secret });
   } catch (error) {
     console.error("Error processing payment:", error);
     res
@@ -121,6 +121,7 @@ app.post("/api/create-checkout-session", async (req, res) => {
 app.get("/api/test", (req, res) => {
   res.send("Hello World");
 });
+
 // 设置 Webhook 监听端点
 app.post("/api/webhook", (req, res) => {
   const sig = req.headers["stripe-signature"];

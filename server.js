@@ -50,9 +50,9 @@ app.post("/api/create-checkout-session", async (req, res) => {
   try {
     // 1.创建客户 - 可选
     if (
-      !req.body.cartItems ||
-      !Array.isArray(req.body.cartItems) ||
-      req.body.cartItems.length === 0
+      !req.body.items ||
+      !Array.isArray(req.body.items) ||
+      req.body.items.length === 0
     ) {
       return res.status(400).json({ error: "Invalid or empty cartItems" });
     }

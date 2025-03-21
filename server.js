@@ -54,14 +54,14 @@ app.post("/api/create-checkout-session", async (req, res) => {
       !Array.isArray(req.body.items) ||
       req.body.items.length === 0
     ) {
-      return res.status(400).json({ error: "Invalid or empty cartItems" });
+      return res.status(400).json({ error: "Invalid or empty Items" });
     }
 
     const customer = await stripe.customers
       .create({
         metadata: {
           userId: req.body.userId,
-          cart: JSON.stringify(req.body.cartItems),
+          cart: JSON.stringify(req.body.items),
         },
       })
       .catch((error) => {

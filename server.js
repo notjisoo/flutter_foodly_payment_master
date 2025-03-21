@@ -50,18 +50,18 @@ app.post("/api/create-checkout-session", async (req, res) => {
   try {
     // 1.创建客户 - 可选
     if (
-      !req.body.items ||
-      !Array.isArray(req.body.items) ||
-      req.body.items.length === 0
+      !req.body.cartItems ||
+      !Array.isArray(req.body.cartItems) ||
+      req.body.cartItems.length === 0
     ) {
-      return res.status(400).json({ error: "Invalid or empty Items" });
+      return res.status(400).json({ error: "Invalid or empty cartItems" });
     }
 
     const customer = await stripe.customers
       .create({
         metadata: {
           userId: req.body.userId,
-          cart: JSON.stringify(req.body.items),
+          cart: JSON.stringify(req.body.cartItems),
         },
       })
       .catch((error) => {
@@ -70,7 +70,7 @@ app.post("/api/create-checkout-session", async (req, res) => {
       });
 
     // 2.格式化商品行项目
-    const line_items = req.body.items.map((item) => {
+    const line_items = req.body.cartItems.map((item) => {
       return {
         price_data: {
           currency: "usd",

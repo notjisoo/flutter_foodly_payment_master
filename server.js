@@ -20,7 +20,6 @@ const client = new MongoClient(uri, {
 try {
   client.connect();
   console.log("Connected to MongoDB");
-  return client;
 } catch (error) {
   console.error("MongoDB connection error:", error);
 }

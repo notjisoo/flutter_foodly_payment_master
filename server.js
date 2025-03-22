@@ -10,20 +10,23 @@ const cors = require("cors");
 dotenv.config();
 
 // 连接数据库
-const uri = process.env.MONGODB_URI; // 替换为你的 MongoDB URI
-const client = new MongoClient(uri, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  serverSelectionTimeoutMS: 20000,
-});
+let client;
+let database;
 
-try {
-  client.connect();
-  console.log("Connected to MongoDB");
-} catch (error) {
-  console.error("MongoDB connection error:", error);
+async function connectToDatabase() {
+  if (!client) {
+    const uri = "mongodb://localhost:27017"; // 替换为你的 MongoDB URI
+    client = new MongoClient(uri, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+    await client.connect();
+    console.log("Connected to MongoDB");
+    database = client.db("yourDatabaseName"); // 替换为你的数据库名称
+  }
+  return database;
 }
-const database = client.db("test");
+
 app.use(
   cors({
     origin: "*", // 或者指定允许的域名
@@ -161,8 +164,8 @@ app.post(
         case "payment_intent.succeeded":
           try {
             const paymentIntent = event.data.object;
-
-            const payments = database.collection("payments");
+            const db = await connectToDatabase();
+            const payments = db.collection("payments");
             // 创建支付记录
             const payment = {
               paymentIntentId: paymentIntent.id,
@@ -179,8 +182,6 @@ app.post(
             console.log("支付记录已保存:", result.insertedId);
           } catch (error) {
             console.error("保存支付记录失败:", error);
-          } finally {
-            await client.close();
           }
           break;
 
@@ -188,19 +189,6 @@ app.post(
         case "payment_intent.payment_failed":
           try {
             const paymentIntent = event.data.object;
-
-            // 创建失败的支付记录
-            const payment = new Payment({
-              paymentIntentId: paymentIntent.id,
-              customerId: paymentIntent.customer,
-              amount: paymentIntent.amount,
-              currency: paymentIntent.currency,
-              status: "failed",
-              metadata: paymentIntent.metadata,
-              items: JSON.parse(paymentIntent.metadata.items || "[]"),
-            });
-
-            await payment.save();
 
             console.log("失败的支付记录已保存:", payment);
           } catch (error) {
@@ -211,7 +199,10 @@ app.post(
         // 结账会话已完成
         case "checkout.session.completed":
           const checkoutData = event.data.object;
-          const ordersCollection = database.collection("orders");
+          const db = await connectToDatabase();
+          const ordersCollection = db.collection("orders");
+
+          console.log(checkoutData.customer);
 
           console.log("Session Completed");
           stripe.customers
@@ -219,7 +210,6 @@ app.post(
             .then(async (customer) => {
               try {
                 const data = JSON.parse(customer.metadata.cart);
-
                 const products = data.map((item) => {
                   return {
                     name: item.name,
@@ -229,6 +219,8 @@ app.post(
                     restaurantId: item.restaurantId,
                   };
                 });
+
+                console.log("checkoutData.customer");
 
                 console.log(products[0].id);
 

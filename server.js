@@ -4,23 +4,11 @@ const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const dotenv = require("dotenv");
 const mongoose = require("mongoose");
 const Payment = require("./models/Payment"); // PaymentModel
-const cors = require("cors");
+// const cors = require("cors");
 // 加载环境变量
 dotenv.config();
-app.use(
-  cors({
-    origin: "*", // 或者指定允许的域名
-  })
-);
 
-// 排除webhook路由使用原始body
-app.use((req, res, next) => {
-  if (!req.path.startsWith("/api/webhook")) {
-    express.json()(req, res, next);
-  } else {
-    next();
-  }
-});
+console.log("111");
 
 // 连接数据库
 mongoose
@@ -31,6 +19,15 @@ mongoose
   .catch((err) => {
     console.log(err);
   });
+
+// 排除webhook路由使用原始body
+app.use((req, res, next) => {
+  if (!req.path.startsWith("/api/webhook")) {
+    express.json()(req, res, next);
+  } else {
+    next();
+  }
+});
 
 // 创建支付意图的 API
 app.post("/api/process-payment", async (req, res) => {

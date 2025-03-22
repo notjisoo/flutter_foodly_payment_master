@@ -197,7 +197,6 @@ app.post(
       console.error("Webhook signature verification failed.", err.message);
       return res.status(400).send(`Webhook Error: ${err.message}`);
     }
-    res.status(200).send("Webhook received");
   }
 );
 

@@ -15,14 +15,11 @@ let database;
 
 async function connectToDatabase() {
   if (!client) {
-    const uri = "mongodb://localhost:27017"; // 替换为你的 MongoDB URI
-    client = new MongoClient(uri, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    const uri = process.env.MONGODB_URI; // 替换为你的 MongoDB URI
+    client = new MongoClient(uri);
     await client.connect();
     console.log("Connected to MongoDB");
-    database = client.db("yourDatabaseName"); // 替换为你的数据库名称
+    database = client.db("test"); // 替换为你的数据库名称
   }
   return database;
 }
@@ -202,9 +199,7 @@ app.post(
           const db = await connectToDatabase();
           const ordersCollection = db.collection("orders");
 
-          console.log(checkoutData.customer);
-
-          console.log("Session Completed");
+          console.log("checkoutData.customer", checkoutData.customer);
           stripe.customers
             .retrieve(checkoutData.customer)
             .then(async (customer) => {
@@ -221,9 +216,7 @@ app.post(
                 });
 
                 console.log("checkoutData.customer");
-
                 console.log(products[0].id);
-
                 const updateResult = await ordersCollection.findOneAndUpdate(
                   { _id: products[0].id }, // 使用正确的查询条件
                   {

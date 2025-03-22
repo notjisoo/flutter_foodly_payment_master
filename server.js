@@ -20,9 +20,14 @@ mongoose
 dotenv.config();
 const app = express();
 
-// 使用 body-parser 中间件
-app.use(bodyParser.json());
-app.use(express.json()); // 确保 Vercel 能正确解析 JSON
+app.use((req, res, next) => {
+  // 排除webhook路由使用原始body
+  if (!req.path.startsWith("/api/webhook")) {
+    express.json()(req, res, next);
+  } else {
+    next();
+  }
+});
 
 // 创建支付意图的 API
 app.post("/api/process-payment", async (req, res) => {
@@ -39,9 +44,10 @@ app.post("/api/process-payment", async (req, res) => {
       amount,
       currency,
       payment_method: paymentMethodId, // 前端传递的
-      cardholder: "ich_1MsKAB2eZvKYlo2C3eZ2BdvK",
+      payment_method_types: ["card"],
       type: "virtual",
       // confirm: true, // 直接确认支付（无需前端再次调用）
+      // cardholder: "ich_1MsKAB2eZvKYlo2C3eZ2BdvK",
     });
 
     // 返回 client_secret
@@ -114,82 +120,86 @@ app.post("/api/create-checkout-session", async (req, res) => {
     });
   }
 });
-app.get("/api/test", express.raw({ type: "application/json" }), (req, res) => {
+app.get("/api/test", (req, res) => {
   res.send("Hello World");
 });
 
 // 设置 Webhook 监听端点
-app.post("/api/webhook", async (req, res) => {
-  const sig = req.headers["stripe-signature"];
-  let event;
+app.post(
+  "/api/webhook",
+  express.raw({ type: "application/json" }),
+  async (req, res) => {
+    const sig = req.headers["stripe-signature"];
+    let event;
 
-  try {
-    event = stripe.webhooks.constructEvent(
-      req.body,
-      sig,
-      process.env.STRIPE_WEBHOOK_SECRET
-    );
-    // 添加webhook接收日志
-    console.log("收到Webhook事件:", event.type);
+    try {
+      event = stripe.webhooks.constructEvent(
+        req.body,
+        sig,
+        process.env.STRIPE_WEBHOOK_SECRET
+      );
+      // 添加webhook接收日志
+      console.log("收到Webhook事件:", event.type);
 
-    switch (event.type) {
-      case "payment_intent.succeeded":
-        try {
-          const paymentIntent = event.data.object;
+      switch (event.type) {
+        case "payment_intent.succeeded":
+          try {
+            const paymentIntent = event.data.object;
 
-          // 创建支付记录
-          const payment = new Payment({
-            paymentIntentId: paymentIntent.id,
-            customerId: paymentIntent.customer,
-            amount: paymentIntent.amount,
-            currency: paymentIntent.currency,
-            status: "succeeded",
-            metadata: paymentIntent.metadata,
-            items: JSON.parse(paymentIntent.metadata.items || "[]"), // 如果在metadata中存储了商品信息
-          });
+            // 创建支付记录
+            const payment = new Payment({
+              paymentIntentId: paymentIntent.id,
+              customerId: paymentIntent.customer,
+              amount: paymentIntent.amount,
+              currency: paymentIntent.currency,
+              status: "succeeded",
+              metadata: paymentIntent.metadata,
+              items: JSON.parse(paymentIntent.metadata.items || "[]"), // 如果在metadata中存储了商品信息
+            });
 
-          // 保存到数据库
-          await payment.save();
+            // 保存到数据库
+            await payment.save();
 
-          console.log("支付记录已保存:", payment);
-        } catch (error) {
-          console.error("保存支付记录失败:", error);
-        }
-        break;
+            console.log("支付记录已保存:", payment);
+          } catch (error) {
+            console.error("保存支付记录失败:", error);
+          }
+          break;
 
-      case "payment_intent.payment_failed":
-        try {
-          const paymentIntent = event.data.object;
+        case "payment_intent.payment_failed":
+          try {
+            const paymentIntent = event.data.object;
 
-          // 创建失败的支付记录
-          const payment = new Payment({
-            paymentIntentId: paymentIntent.id,
-            customerId: paymentIntent.customer,
-            amount: paymentIntent.amount,
-            currency: paymentIntent.currency,
-            status: "failed",
-            metadata: paymentIntent.metadata,
-            items: JSON.parse(paymentIntent.metadata.items || "[]"),
-          });
+            // 创建失败的支付记录
+            const payment = new Payment({
+              paymentIntentId: paymentIntent.id,
+              customerId: paymentIntent.customer,
+              amount: paymentIntent.amount,
+              currency: paymentIntent.currency,
+              status: "failed",
+              metadata: paymentIntent.metadata,
+              items: JSON.parse(paymentIntent.metadata.items || "[]"),
+            });
 
-          await payment.save();
+            await payment.save();
 
-          console.log("失败的支付记录已保存:", payment);
-        } catch (error) {
-          console.error("保存失败支付记录错误:", error);
-        }
-        break;
+            console.log("失败的支付记录已保存:", payment);
+          } catch (error) {
+            console.error("保存失败支付记录错误:", error);
+          }
+          break;
 
-      default:
-        console.log(`Unhandled event type ${event.type}`);
+        default:
+          console.log(`Unhandled event type ${event.type}`);
+      }
+      res.status(200).send("Webhook received");
+    } catch (err) {
+      console.error("Webhook signature verification failed.", err.message);
+      return res.status(400).send(`Webhook Error: ${err.message}`);
     }
     res.status(200).send("Webhook received");
-  } catch (err) {
-    console.error("Webhook signature verification failed.", err.message);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
   }
-  res.status(200).send("Webhook received");
-});
+);
 
 // ✅ 让 Vercel 识别 `server.js` 作为 API 入口
 module.exports = app;

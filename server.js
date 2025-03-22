@@ -4,6 +4,7 @@ const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const dotenv = require("dotenv");
 const mongoose = require("mongoose");
 const Payment = require("./models/Payment"); // PaymentModel
+const cors = require("cors");
 
 // 连接数据库
 mongoose
@@ -14,6 +15,12 @@ mongoose
   .catch((err) => {
     console.log(err);
   });
+
+app.use(
+  cors({
+    origin: "*", // 或者指定允许的域名
+  })
+);
 // 加载环境变量
 dotenv.config();
 const app = express();
@@ -199,5 +206,4 @@ app.post(
   }
 );
 
-// ✅ 让 Vercel 识别 `server.js` 作为 API 入口
 module.exports = app;

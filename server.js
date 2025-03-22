@@ -7,9 +7,7 @@ const Payment = require("./models/Payment"); // PaymentModel
 
 // 连接数据库
 mongoose
-  .connect(
-    "mongodb+srv://foodly:mcQsSBqbnEi4qmwr@foodly.8brkl.mongodb.net/?retryWrites=true&w=majority&appName=foodly"
-  )
+  .connect(process.env.MONGODB_URI)
   .then(() => {
     console.log("Foodly Database Connected");
   })

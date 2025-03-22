@@ -18,7 +18,7 @@ const client = new MongoClient(uri, {
 });
 
 try {
-  await client.connect();
+  client.connect();
   console.log("Connected to MongoDB");
   return client;
 } catch (error) {

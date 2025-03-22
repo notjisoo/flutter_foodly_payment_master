@@ -129,6 +129,7 @@ app.post("/api/create-checkout-session", async (req, res) => {
     });
   }
 });
+
 app.get("/api/test", (req, res) => {
   res.send("Hello World");
 });
@@ -152,6 +153,7 @@ app.post(
       console.log("Webhook事件数据:", event.data);
 
       switch (event.type) {
+        // 支付意图成功
         case "payment_intent.succeeded":
           try {
             const paymentIntent = event.data.object;
@@ -176,6 +178,7 @@ app.post(
           }
           break;
 
+        // 支付意图失败
         case "payment_intent.payment_failed":
           try {
             const paymentIntent = event.data.object;
@@ -199,6 +202,52 @@ app.post(
           }
           break;
 
+        // 结账会话已完成
+        case "checkout.session.completed":
+          const checkoutData = event.data.object;
+          const database = client.db("test");
+          const ordersCollection = database.collection("orders");
+
+          console.log("Session Completed");
+          stripe.customers
+            .retrieve(checkoutData.customer)
+            .then(async (customer) => {
+              try {
+                const data = JSON.parse(customer.metadata.cart);
+
+                const products = data.map((item) => {
+                  return {
+                    name: item.name,
+                    id: item.id,
+                    price: item.price,
+                    quantity: item.quantity,
+                    restaurantId: item.restaurantId,
+                  };
+                });
+
+                console.log(products[0].id);
+
+                const updateResult = await ordersCollection.findOneAndUpdate(
+                  { _id: products[0].id }, // 使用正确的查询条件
+                  {
+                    $set: {
+                      paymentStatus: "Completed",
+                      orderStatus: "Placed",
+                    },
+                  },
+                  { returnDocument: "after" } // 返回更新后的文档
+                );
+
+                if (updateResult.value) {
+                  console.log("Order updated:", updateResult.value);
+                } else {
+                  console.log("Order not found");
+                }
+              } catch (error) {
+                console.error("Error updating order:", error);
+              }
+            });
+          break;
         default:
           console.log(`Unhandled event type ${event.type}`);
       }

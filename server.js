@@ -3,22 +3,27 @@ const app = express();
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const dotenv = require("dotenv");
 const mongoose = require("mongoose");
+const { MongoClient } = require("mongodb");
 const Payment = require("./models/Payment"); // PaymentModel
 const cors = require("cors");
 // 加载环境变量
 dotenv.config();
 
 // 连接数据库
-mongoose
-  .connect(process.env.MONGODB_URI, {
-    serverSelectionTimeoutMS: 20000, // 设置为20秒
-  })
-  .then(() => {
-    console.log("Foodly Database Connected");
-  })
-  .catch((err) => {
-    console.log(err);
-  });
+const uri = process.env.MONGODB_URI; // 替换为你的 MongoDB URI
+const client = new MongoClient(uri, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+  serverSelectionTimeoutMS: 20000,
+});
+
+try {
+  await client.connect();
+  console.log("Connected to MongoDB");
+  return client;
+} catch (error) {
+  console.error("MongoDB connection error:", error);
+}
 
 app.use(
   cors({

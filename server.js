@@ -1,12 +1,9 @@
 const express = require("express");
 const bodyParser = require("body-parser");
-const Stripe = require("stripe");
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const dotenv = require("dotenv");
 const mongoose = require("mongoose");
 const Payment = require("./models/Payment"); // PaymentModel
-
-// 初始化 Stripe
-const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
 // 连接数据库
 mongoose
@@ -118,7 +115,6 @@ app.post("/api/create-checkout-session", async (req, res) => {
     });
   }
 });
-
 app.get("/api/test", (req, res) => {
   res.send("Hello World");
 });
@@ -129,7 +125,7 @@ app.post("/api/webhook", async (req, res) => {
   let event;
 
   try {
-    event = stripeInstance.webhooks.constructEvent(
+    event = stripe.webhooks.constructEvent(
       req.body,
       sig,
       process.env.STRIPE_WEBHOOK_SECRET

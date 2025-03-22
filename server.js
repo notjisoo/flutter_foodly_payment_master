@@ -10,7 +10,9 @@ dotenv.config();
 
 // 连接数据库
 mongoose
-  .connect(process.env.MONGODB_URI)
+  .connect(process.env.MONGODB_URI, {
+    serverSelectionTimeoutMS: 20000, // 设置为20秒
+  })
   .then(() => {
     console.log("Foodly Database Connected");
   })
@@ -86,6 +88,8 @@ app.post("/api/create-checkout-session", async (req, res) => {
         console.error("Error creating customer:", error);
         throw new Error("Failed to create customer");
       });
+
+    console.log(req.body.cartItems);
 
     // 2.格式化商品行项目
     const line_items = req.body.cartItems.map((item) => {

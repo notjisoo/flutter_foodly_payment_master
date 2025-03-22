@@ -98,6 +98,7 @@ app.post("/api/create-checkout-session", async (req, res) => {
             metadata: {
               id: item.id,
             },
+            images: [item.imageUrl],
           },
           unit_amount: Math.round(item.price * 100), // 转换为美分
         },

@@ -23,7 +23,6 @@ const app = express();
 // 使用 body-parser 中间件
 app.use(bodyParser.json());
 app.use(express.json()); // 确保 Vercel 能正确解析 JSON
-app.use(bodyParser.raw({ type: "application/json" })); // 用于接收 Webhook 请求
 
 // 创建支付意图的 API
 app.post("/api/process-payment", async (req, res) => {
@@ -115,7 +114,7 @@ app.post("/api/create-checkout-session", async (req, res) => {
     });
   }
 });
-app.get("/api/test", (req, res) => {
+app.get("/api/test", express.raw({ type: "application/json" }), (req, res) => {
   res.send("Hello World");
 });
 

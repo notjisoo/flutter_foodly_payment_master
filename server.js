@@ -23,7 +23,7 @@ try {
 } catch (error) {
   console.error("MongoDB connection error:", error);
 }
-
+const database = client.db("test");
 app.use(
   cors({
     origin: "*", // 或者指定允许的域名
@@ -162,8 +162,9 @@ app.post(
           try {
             const paymentIntent = event.data.object;
 
+            const payments = database.collection("payments");
             // 创建支付记录
-            const payment = new Payment({
+            const payment = {
               paymentIntentId: paymentIntent.id,
               customerId: paymentIntent.customer,
               amount: paymentIntent.amount,
@@ -171,14 +172,15 @@ app.post(
               status: "succeeded",
               metadata: paymentIntent.metadata,
               items: JSON.parse(paymentIntent.metadata.items || "[]"), // 如果在metadata中存储了商品信息
-            });
+            };
 
             // 保存到数据库
-            await payment.save();
-
-            console.log("支付记录已保存:", payment);
+            const result = await payments.insertOne(payment);
+            console.log("支付记录已保存:", result.insertedId);
           } catch (error) {
             console.error("保存支付记录失败:", error);
+          } finally {
+            await client.close();
           }
           break;
 
@@ -209,7 +211,6 @@ app.post(
         // 结账会话已完成
         case "checkout.session.completed":
           const checkoutData = event.data.object;
-          const database = client.db("test");
           const ordersCollection = database.collection("orders");
 
           console.log("Session Completed");

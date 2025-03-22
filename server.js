@@ -138,6 +138,7 @@ app.post(
       );
       // 添加webhook接收日志
       console.log("收到Webhook事件:", event.type);
+      console.log("Webhook事件数据:", event.data);
 
       switch (event.type) {
         case "payment_intent.succeeded":

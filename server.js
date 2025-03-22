@@ -1,12 +1,24 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const Stripe = require("stripe");
+const dotenv = require("dotenv");
+const mongoose = require("mongoose");
+const Payment = require("./models/Payment"); // PaymentModel
 
 // 初始化 Stripe
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
-const dotenv = require("dotenv");
-
+// 连接数据库
+mongoose
+  .connect(
+    "mongodb+srv://foodly:mcQsSBqbnEi4qmwr@foodly.8brkl.mongodb.net/?retryWrites=true&w=majority&appName=foodly"
+  )
+  .then(() => {
+    console.log("Foodly Database Connected");
+  })
+  .catch((err) => {
+    console.log(err);
+  });
 // 加载环境变量
 dotenv.config();
 const app = express();
@@ -112,7 +124,7 @@ app.get("/api/test", (req, res) => {
 });
 
 // 设置 Webhook 监听端点
-app.post("/api/webhook", (req, res) => {
+app.post("/api/webhook", async (req, res) => {
   const sig = req.headers["stripe-signature"];
   let event;
 
@@ -122,24 +134,65 @@ app.post("/api/webhook", (req, res) => {
       sig,
       process.env.STRIPE_WEBHOOK_SECRET
     );
+    // 添加webhook接收日志
+    console.log("收到Webhook事件:", event.type);
+
+    switch (event.type) {
+      case "payment_intent.succeeded":
+        try {
+          const paymentIntent = event.data.object;
+
+          // 创建支付记录
+          const payment = new Payment({
+            paymentIntentId: paymentIntent.id,
+            customerId: paymentIntent.customer,
+            amount: paymentIntent.amount,
+            currency: paymentIntent.currency,
+            status: "succeeded",
+            metadata: paymentIntent.metadata,
+            items: JSON.parse(paymentIntent.metadata.items || "[]"), // 如果在metadata中存储了商品信息
+          });
+
+          // 保存到数据库
+          await payment.save();
+
+          console.log("支付记录已保存:", payment);
+        } catch (error) {
+          console.error("保存支付记录失败:", error);
+        }
+        break;
+
+      case "payment_intent.payment_failed":
+        try {
+          const paymentIntent = event.data.object;
+
+          // 创建失败的支付记录
+          const payment = new Payment({
+            paymentIntentId: paymentIntent.id,
+            customerId: paymentIntent.customer,
+            amount: paymentIntent.amount,
+            currency: paymentIntent.currency,
+            status: "failed",
+            metadata: paymentIntent.metadata,
+            items: JSON.parse(paymentIntent.metadata.items || "[]"),
+          });
+
+          await payment.save();
+
+          console.log("失败的支付记录已保存:", payment);
+        } catch (error) {
+          console.error("保存失败支付记录错误:", error);
+        }
+        break;
+
+      default:
+        console.log(`Unhandled event type ${event.type}`);
+    }
+    res.status(200).send("Webhook received");
   } catch (err) {
     console.error("Webhook signature verification failed.", err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
-
-  switch (event.type) {
-    case "payment_intent.succeeded":
-      console.log("支付成功：", event.data.object.id);
-      break;
-
-    case "payment_intent.payment_failed":
-      console.log("支付失败：", event.data.object.id);
-      break;
-
-    default:
-      console.log(`Unhandled event type ${event.type}`);
-  }
-
   res.status(200).send("Webhook received");
 });
 

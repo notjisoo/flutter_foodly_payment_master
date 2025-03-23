@@ -195,7 +195,6 @@ app.post(
 
         // 结账会话已完成
         case "checkout.session.completed":
-        case "checkout.session.completed":
           try {
             const checkoutData = event.data.object;
 
@@ -224,6 +223,7 @@ app.post(
               price: item.price,
               quantity: item.quantity,
               restaurantId: item.restaurantId,
+              orderId: item.orderId,
             }));
 
             // 获取数据库连接
@@ -232,7 +232,7 @@ app.post(
 
             // 使用 ObjectId 转换，确保 ID 格式正确
             const updateResult = await ordersCollection.findOneAndUpdate(
-              { _id: new ObjectId(products[0].id) }, // 假设 product[0].id 是 MongoDB ObjectId 格式
+              { _id: new ObjectId(String(products[0].orderId)) }, // 添加 String() 转换
               {
                 $set: {
                   paymentStatus: "Completed",

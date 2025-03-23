@@ -232,7 +232,7 @@ app.post(
 
             // 使用 ObjectId 转换，确保 ID 格式正确
             const updateResult = await ordersCollection.findOneAndUpdate(
-              { _id: new ObjectId(String(products[0].orderId)) }, // 添加 String() 转换
+              { _id: ObjectId(products[0].orderId) }, //
               {
                 $set: {
                   paymentStatus: "Completed",

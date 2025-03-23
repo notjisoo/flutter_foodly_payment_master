@@ -3,6 +3,11 @@ const app = express();
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const dotenv = require("dotenv");
 const { MongoClient, ObjectId } = require("mongodb");
+
+// Utility function to check if a string is a valid ObjectId
+function isValidObjectId(id) {
+  return ObjectId.isValid(id) && new ObjectId(id).toString() === id;
+}
 const cors = require("cors");
 // 加载环境变量
 dotenv.config();
@@ -230,9 +235,14 @@ app.post(
             const db = await connectToDatabase();
             const ordersCollection = db.collection("orders");
 
-            // 使用 ObjectId 转换，确保 ID 格式正确
+            // Validate orderId before using ObjectId
+            if (!isValidObjectId(products[0].orderId)) {
+              console.error("Invalid orderId:", products[0].orderId);
+              return res.status(400).json({ error: "Invalid orderId format." });
+            }
+
             const updateResult = await ordersCollection.findOneAndUpdate(
-              { _id: ObjectId(products[0].orderId) }, //
+              { _id: ObjectId(products[0].orderId) },
               {
                 $set: {
                   paymentStatus: "Completed",

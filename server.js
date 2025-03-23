@@ -241,7 +241,7 @@ app.post(
               return res.status(400).json({ error: "Invalid orderId format." });
             }
 
-            const updateResult = await ordersCollection.findOneAndUpdate(
+            await ordersCollection.findOneAndUpdate(
               { _id: new ObjectId(products[0].orderId) },
               {
                 $set: {
@@ -251,12 +251,7 @@ app.post(
               },
               { returnDocument: "after" } // 返回更新后的文档
             );
-
-            if (updateResult.value) {
-              console.log("Order updated:", updateResult.value);
-            } else {
-              console.log("Order not found");
-            }
+            console.log("Order updated successfully.");
           } catch (error) {
             console.error("Error processing checkout session:", error);
           }

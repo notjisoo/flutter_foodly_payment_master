@@ -2,9 +2,7 @@ const express = require("express");
 const app = express();
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const dotenv = require("dotenv");
-const mongoose = require("mongoose");
 const { MongoClient } = require("mongodb");
-const Payment = require("./models/Payment"); // PaymentModel
 const cors = require("cors");
 // 加载环境变量
 dotenv.config();
@@ -92,8 +90,6 @@ app.post("/api/create-checkout-session", async (req, res) => {
         console.error("Error creating customer:", error);
         throw new Error("Failed to create customer");
       });
-
-    console.log(req.body.cartItems);
 
     // 2.格式化商品行项目
     const line_items = req.body.cartItems.map((item) => {
@@ -215,7 +211,7 @@ app.post(
                   };
                 });
 
-                console.log("checkoutData.customer");
+                // console.log("checkoutData.customer");
                 console.log(products[0].id);
                 const updateResult = await ordersCollection.findOneAndUpdate(
                   { _id: products[0].id }, // 使用正确的查询条件

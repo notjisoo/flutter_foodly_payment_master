@@ -111,6 +111,9 @@ app.post("/api/create-checkout-session", async (req, res) => {
     });
 
     // 3.创建checkout session
+    console.log(customer.id);
+    console.log("customer.metadata.cart", customer.metadata.cart);
+
     const session = await stripe.checkout.sessions.create({
       customer: customer.id,
       line_items,
@@ -159,6 +162,7 @@ app.post(
             const paymentIntent = event.data.object;
             const db = await connectToDatabase();
             const payments = db.collection("payments");
+            console.log("创建支付记录");
             // 创建支付记录
             const payment = {
               paymentIntentId: paymentIntent.id,
@@ -191,55 +195,67 @@ app.post(
 
         // 结账会话已完成
         case "checkout.session.completed":
-          const checkoutData = event.data.object;
-          const db = await connectToDatabase();
-          const ordersCollection = db.collection("orders");
+        case "checkout.session.completed":
+          try {
+            const checkoutData = event.data.object;
 
-          console.log("checkoutData.customer", checkoutData.customer);
-          stripe.customers
-            .retrieve(checkoutData.customer)
-            .then(async (customer) => {
-              try {
-                const data = JSON.parse(customer.metadata.cart);
-                const products = data.map((item) => {
-                  return {
-                    name: item.name,
-                    id: item.id,
-                    price: item.price,
-                    quantity: item.quantity,
-                    restaurantId: item.restaurantId,
-                  };
-                });
+            // 确保 checkoutData.customer 存在
+            if (!checkoutData.customer) {
+              console.error("Missing customer data in checkout session.");
+              break;
+            }
 
-                // console.log("checkoutData.customer");
-                console.log(products[0].id);
-                const updateResult = await ordersCollection.findOneAndUpdate(
-                  { _id: products[0].id }, // 使用正确的查询条件
-                  {
-                    $set: {
-                      paymentStatus: "Completed",
-                      orderStatus: "Placed",
-                    },
-                  },
-                  { returnDocument: "after" } // 返回更新后的文档
-                );
+            // 使用 await 进行 Stripe 客户信息的获取
+            const customer = await stripe.customers.retrieve(
+              checkoutData.customer
+            );
 
-                if (updateResult.value) {
-                  console.log("Order updated:", updateResult.value);
-                } else {
-                  console.log("Order not found");
-                }
-              } catch (error) {
-                console.error("Error updating order:", error);
-              }
-            })
-            .catch((e) => {
-              console.log("Error retrieving customer:", e);
-            });
+            // 确保 cart 数据存在
+            const cart = customer.metadata?.cart;
+            if (!cart) {
+              console.error("Cart is missing in customer metadata.");
+              break;
+            }
+
+            const data = JSON.parse(cart);
+            const products = data.map((item) => ({
+              name: item.name,
+              id: item.id,
+              price: item.price,
+              quantity: item.quantity,
+              restaurantId: item.restaurantId,
+            }));
+
+            // 获取数据库连接
+            const db = await connectToDatabase();
+            const ordersCollection = db.collection("orders");
+
+            // 使用 ObjectId 转换，确保 ID 格式正确
+            const updateResult = await ordersCollection.findOneAndUpdate(
+              { _id: new ObjectId(products[0].id) }, // 假设 product[0].id 是 MongoDB ObjectId 格式
+              {
+                $set: {
+                  paymentStatus: "Completed",
+                  orderStatus: "Placed",
+                },
+              },
+              { returnDocument: "after" } // 返回更新后的文档
+            );
+
+            if (updateResult.value) {
+              console.log("Order updated:", updateResult.value);
+            } else {
+              console.log("Order not found");
+            }
+          } catch (error) {
+            console.error("Error processing checkout session:", error);
+          }
           break;
+
         default:
           console.log(`Unhandled event type ${event.type}`);
       }
+
       res.status(200).send("Webhook received");
     } catch (err) {
       console.error("Webhook signature verification failed.", err.message);

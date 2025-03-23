@@ -232,6 +232,9 @@ app.post(
               } catch (error) {
                 console.error("Error updating order:", error);
               }
+            })
+            .catch((e) => {
+              console.log("Error retrieving customer:", e);
             });
           break;
         default:

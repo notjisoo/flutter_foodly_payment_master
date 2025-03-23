@@ -242,7 +242,7 @@ app.post(
             }
 
             const updateResult = await ordersCollection.findOneAndUpdate(
-              { _id: ObjectId(products[0].orderId) },
+              { _id: new ObjectId(products[0].orderId) },
               {
                 $set: {
                   paymentStatus: "Completed",

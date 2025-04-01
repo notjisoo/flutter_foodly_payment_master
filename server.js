@@ -7,10 +7,13 @@ dotenv.config();
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const { MongoClient, ObjectId } = require("mongodb");
 
-// 添加 WebSocket 通知函数
+// 修改 WebSocket 通知函数
 const sendWebSocketNotification = async (restaurantId, orderId) => {
   try {
-    const ws = new WebSocket("ws://localhost:6013");
+    // 修改连接URL，添加restaurantId参数
+    const ws = new WebSocket(
+      `ws://localhost:6013?restaurantId=${restaurantId}`
+    );
 
     ws.on("open", () => {
       console.log("连接到 WebSocket 服务器成功");
@@ -21,11 +24,14 @@ const sendWebSocketNotification = async (restaurantId, orderId) => {
           status: true,
           message: "Payment completed successfully",
           orderId: orderId,
+          restaurantId: restaurantId,
         },
       };
 
       ws.send(JSON.stringify(notification));
-      console.log(`已发送支付完成通知，订单ID: ${orderId}`);
+      console.log(
+        `已发送支付完成通知，订单ID: ${orderId}, 餐厅ID: ${restaurantId}`
+      );
 
       // 发送后关闭连接
       setTimeout(() => ws.close(), 1000);
@@ -33,6 +39,10 @@ const sendWebSocketNotification = async (restaurantId, orderId) => {
 
     ws.on("error", (error) => {
       console.error("WebSocket 连接错误:", error);
+    });
+
+    ws.on("close", () => {
+      console.log("WebSocket 连接已关闭");
     });
   } catch (error) {
     console.error("发送 WebSocket 通知失败:", error);
@@ -275,27 +285,23 @@ app.post(
             }
 
             // 更新订单状态
-            const updatedOrder = await ordersCollection.findOneAndUpdate(
+            await ordersCollection.findOneAndUpdate(
               { _id: new ObjectId(products[0].orderId) },
               {
                 $set: {
                   paymentStatus: "Completed",
                   orderStatus: "Placed",
                 },
-              },
-              { returnDocument: "after" } // 返回更新后的文档
+              }
             );
 
-            console.log("Order updated successfully.");
+            // 添加 WebSocket 通知
+            await sendWebSocketNotification(
+              products[0].restaurantId, // 确保你的products中包含restaurantId
+              products[0].orderId
+            );
 
-            // 发送 WebSocket 通知
-            if (updatedOrder && updatedOrder.value) {
-              console.log("准备发送 WebSocket 通知");
-              await sendWebSocketNotification(
-                products[0].restaurantId,
-                products[0].orderId
-              );
-            }
+            console.log("Order updated and notification sent successfully.");
           } catch (error) {
             console.error("Error processing checkout session:", error);
           }

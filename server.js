@@ -1,53 +1,10 @@
 const express = require("express");
 const app = express();
 const dotenv = require("dotenv");
-const WebSocket = require("ws"); // 添加 WebSocket
 dotenv.config();
 
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const { MongoClient, ObjectId } = require("mongodb");
-
-// 修改 WebSocket 通知函数
-const sendWebSocketNotification = async (restaurantId, orderId) => {
-  try {
-    // 修改连接URL，添加restaurantId参数
-    const ws = new WebSocket(
-      `ws://localhost:6013?restaurantId=${restaurantId}`
-    );
-
-    ws.on("open", () => {
-      console.log("连接到 WebSocket 服务器成功");
-
-      const notification = {
-        type: "new_order",
-        data: {
-          status: true,
-          message: "Payment completed successfully",
-          orderId: orderId,
-          restaurantId: restaurantId,
-        },
-      };
-
-      ws.send(JSON.stringify(notification));
-      console.log(
-        `已发送支付完成通知，订单ID: ${orderId}, 餐厅ID: ${restaurantId}`
-      );
-
-      // 发送后关闭连接
-      setTimeout(() => ws.close(), 1000);
-    });
-
-    ws.on("error", (error) => {
-      console.error("WebSocket 连接错误:", error);
-    });
-
-    ws.on("close", () => {
-      console.log("WebSocket 连接已关闭");
-    });
-  } catch (error) {
-    console.error("发送 WebSocket 通知失败:", error);
-  }
-};
 
 // Utility function to check if a string is a valid ObjectId
 function isValidObjectId(id) {
@@ -245,6 +202,7 @@ app.post(
         case "checkout.session.completed":
           try {
             const checkoutData = event.data.object;
+            console.log("收到支付完成事件，session数据:", checkoutData);
 
             // 确保 checkoutData.customer 存在
             if (!checkoutData.customer) {
@@ -256,6 +214,7 @@ app.post(
             const customer = await stripe.customers.retrieve(
               checkoutData.customer
             );
+            console.log("获取到客户信息:", customer);
 
             // 确保 cart 数据存在
             const cart = customer.metadata?.cart;
@@ -265,6 +224,8 @@ app.post(
             }
 
             const data = JSON.parse(cart);
+            console.log("解析的购物车数据:", data);
+
             const products = data.map((item) => ({
               name: item.name,
               id: item.id,
@@ -273,6 +234,7 @@ app.post(
               restaurantId: item.restaurantId,
               orderId: item.orderId,
             }));
+            console.log("处理后的商品数据:", products);
 
             // 获取数据库连接
             const db = await connectToDatabase();
@@ -285,25 +247,52 @@ app.post(
             }
 
             // 更新订单状态
-            await ordersCollection.findOneAndUpdate(
+            const updatedOrder = await ordersCollection.findOneAndUpdate(
               { _id: new ObjectId(products[0].orderId) },
               {
                 $set: {
                   paymentStatus: "Completed",
                   orderStatus: "Placed",
                 },
+              },
+              { returnDocument: "after" }
+            );
+            console.log("更新后的订单数据:", updatedOrder.value);
+
+            // 通知主后端服务器
+            try {
+              const response = await fetch(
+                `${process.env.MAIN_BACKEND_URL}/api/orders/payment-success`,
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    orderId: products[0].orderId,
+                    orderDetails: products,
+                    paymentDetails: {
+                      sessionId: checkoutData.id,
+                      customerId: checkoutData.customer,
+                      amount: checkoutData.amount_total,
+                      currency: checkoutData.currency,
+                    },
+                  }),
+                }
+              );
+
+              if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
               }
-            );
 
-            // 添加 WebSocket 通知
-            await sendWebSocketNotification(
-              products[0].restaurantId, // 确保你的products中包含restaurantId
-              products[0].orderId
-            );
+              console.log("已成功通知主后端服务器");
+            } catch (error) {
+              console.error("通知主后端服务器失败:", error);
+            }
 
-            console.log("Order updated and notification sent successfully.");
+            console.log("订单更新和通知发送成功");
           } catch (error) {
-            console.error("Error processing checkout session:", error);
+            console.error("处理结账会话时出错:", error);
           }
           break;
 

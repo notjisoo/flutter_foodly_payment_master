@@ -271,6 +271,7 @@ app.post(
                   body: JSON.stringify({
                     orderId: products[0].orderId,
                     orderDetails: products,
+                    restaurantId: products[0].restaurantId,
                     paymentDetails: {
                       sessionId: checkoutData.id,
                       customerId: checkoutData.customer,

@@ -237,7 +237,7 @@ app.post(
             console.log("处理后的商品数据:", products);
 
             // 通知主后端服务器
-            try {
+            /* try {
               const response = await fetch(
                 `${process.env.MAIN_BACKEND_URL}/api/orders/payment-success`,
                 {
@@ -267,7 +267,7 @@ app.post(
               console.error("通知主后端服务器失败:", error);
             }
 
-            console.log("订单更新和通知发送成功");
+            console.log("订单更新和通知发送成功");*/
           } catch (error) {
             console.error("处理结账会话时出错:", error);
           }

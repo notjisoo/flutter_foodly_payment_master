@@ -12,6 +12,7 @@
       "dest": "server.js"
     }
   ],
+  "outputDirectory": ".",
   "env": {
     "PORT": "4888",
     "STRIPE_SECRET_KEY": "@stripe_secret_key",
@@ -20,4 +21,4 @@
     "FRONTEND_URL": "@frontend_url",
     "MAIN_BACKEND_URL": "@main_backend_url"
   }
-} 
+}

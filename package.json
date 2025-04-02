@@ -1,17 +1,22 @@
 {
-  "dependencies": {
-    "body-parser": "^1.20.3",
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.7",
-    "express": "^4.21.2",
-    "mongodb": "^6.15.0",
-    "mongoose": "^8.12.2",
-    "stripe": "^17.7.0",
-    "ws": "^8.18.1"
-  },
+  "name": "flutter-foodly-payment",
+  "version": "1.0.0",
+  "description": "Payment service for Flutter Foodly",
+  "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "build": "echo 'No build step required'"
+    "build": "mkdir -p dist && cp server.js dist/",
+    "vercel-build": "echo 'Building for Vercel deployment'"
+  },
+  "dependencies": {
+    "body-parser": "^1.20.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "mongodb": "^5.1.0",
+    "mongoose": "^8.12.2",
+    "stripe": "^11.14.0",
+    "ws": "^8.18.1"
   }
 }

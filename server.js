@@ -236,29 +236,6 @@ app.post(
             }));
             console.log("处理后的商品数据:", products);
 
-            // 获取数据库连接
-            const db = await connectToDatabase();
-            const ordersCollection = db.collection("orders");
-
-            // Validate orderId before using ObjectId
-            if (!isValidObjectId(products[0].orderId)) {
-              console.error("Invalid orderId:", products[0].orderId);
-              return res.status(400).json({ error: "Invalid orderId format." });
-            }
-
-            // 更新订单状态
-            const updatedOrder = await ordersCollection.findOneAndUpdate(
-              { _id: new ObjectId(products[0].orderId) },
-              {
-                $set: {
-                  paymentStatus: "Completed",
-                  orderStatus: "Placed",
-                },
-              },
-              { returnDocument: "after" }
-            );
-            console.log("更新后的订单数据:", updatedOrder.value);
-
             // 通知主后端服务器
             try {
               const response = await fetch(
